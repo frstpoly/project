@@ -1,0 +1,52 @@
+installation mysql standalone:
+
+sudo yum update
+sudo wget https://dev.mysql.com/get/mysql57-community-release-el7-11.noarch.rpm
+sudo yum localinstall mysql57-community-release-el7-11.noarch.rpm 
+sudo yum install mysql-community-server
+sudo systemctl start mysqld.service 
+sudo grep 'temporary password' /var/log/mysqld.log
+	The output will be: 
+	2019-08-31T09:30:06.527923Z 1 [Note] A temporary password is generated for 	root@localhost: 0+,orlwf3ra
+	The password should use in next step.  
+To change the password:
+mysql_secure_installation
+Use the previous password and set new password. And should answer question as following:
+Remove anonymous users? (Press y|Y for Yes, any other key for No) : y
+Disallow root login remotely? (Press y|Y for Yes, any other key for No) : n
+Remove test database and access to it? (Press y|Y for Yes, any other key for No) : y
+Reload privilege tables now? (Press y|Y for Yes, any other key for No) : y
+Now MySql is installed and can connect by following command:
+mysql -u root -p
+
+Create a New User and Grant Permissions in MySQL:
+
+mysql -u root -p
+mysql> CREATE USER 'username'@'localhost' IDENTIFIED BY 'password';
+mysql> GRANT ALL PRIVILEGES ON * . * TO 'username'@'localhost';
+mysql> FLUSH PRIVILEGES;
+To see all the existing users:
+mysql> SELECT User, Host FROM mysql.user;
+
+Install Sakila database:
+
+wget https://downloads.mysql.com/docs/sakila-db.tar.gz
+Tar -xvf sakila-db.tar.gz
+mysql -u root -p
+mysql> SOURCE /home/ec2-user/sakila-db/sakila-schema.sql;
+mysql> SOURCE /home/ec2-user/sakila-db/sakila-data.sql;
+mysql> USE sakila;
+mysql> SHOW FULL TABLES;
+
+Install Sysbench:
+
+sudo amazon-linux-extras install epel
+sudo yum install sysbench 
+sysbench —version
+sysbench cpu run
+cd /usr/share/sysbench/
+sysbench oltp_read_only.lua --db-driver=mysql --mysql-user=’username’ --mysql-password=’password’  --mysql-db=sakila prepare
+sysbench oltp_read_only.lua --db-driver=mysql --mysql-user=’username’ --mysql-password=’password’  --mysql-db=sakila run
+
+
+
