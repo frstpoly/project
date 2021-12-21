@@ -1,0 +1,94 @@
+master node:
+wget https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.2/mysql-cluster-gpl-7.2.35-linux-glibc2.12-x86_64.tar.gz
+tar xvf mysql-cluster-gpl-7.2.35-linux-glibc2.12-x86_64.tar.gz
+ln -s mysql-cluster-gpl-7.2.35-linux-glibc2.12-x86_64/ mysqlc
+mkdir my_cluster my_cluster/ndb_data my_cluster/mysqld_data my_cluster/conf
+cd my_cluster/conf
+
+Create 2 files and write following commands:
+
+my.cnf:
+
+[mysqld]
+ndbcluster
+datadir=/home/ec2-user/my_cluster/mysqld_data
+basedir=/home/ec2-user/mysqlc
+port=3306
+
+config.ini:
+
+[ndb_mgmd]
+hostname= ec2-18-205-27-78.compute-1.amazonaws.com
+datadir=/home/ec2-user/my_cluster/ndb_data
+NodeId=1
+[ndbd default]
+noofreplicas=2
+datadir=/home/ec2-user/my_cluster/ndb_data
+[ndbd]
+hostname= ec2-44-201-243-51.compute-1.amazonaws.com
+NodeId=3
+[ndbd]
+hostname=ec2-3-83-55-161.compute-1.amazonaws.com
+NodeId=4
+[mysqld]
+NodeId=50
+
+cd mysqlc
+scripts/mysql_install_db --no-defaults --datadir=$HOME/my_cluster/mysqld_data
+cd my_cluster
+ $HOME/mysqlc/bin/ndb_mgmd -f conf/config.ini --initial --configdir=$HOME/my_cluster/conf/
+$HOME/mysqlc/bin/ndb_mgm -e show
+
+All slave nodes:
+wget https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.2/mysql-cluster-gpl-7.2.35-linux-glibc2.12-x86_64.tar.gz
+tar xvf mysql-cluster-gpl-7.2.35-linux-glibc2.12-x86_64.tar.gz
+ln -s mysql-cluster-gpl-7.2.35-linux-glibc2.12-x86_64/ mysqlc
+mkdir my_cluster my_cluster/ndb_data my_cluster/mysqld_data my_cluster/conf
+cd my_cluster/conf
+Create 2 files and write following commands:
+
+my.cnf:
+
+[mysqld]
+ndbcluster
+datadir=/home/ec2-user/my_cluster/mysqld_data
+basedir=/home/ec2-user/mysqlc
+port=3306
+
+config.ini:
+
+[ndb_mgmd]
+hostname= ec2-18-205-27-78.compute-1.amazonaws.com
+datadir=/home/ec2-user/my_cluster/ndb_data
+NodeId=1
+[ndbd default]
+noofreplicas=2
+datadir=/home/ec2-user/my_cluster/ndb_data
+[ndbd]
+hostname= ec2-44-201-243-51.compute-1.amazonaws.com
+NodeId=3
+[ndbd]
+hostname=ec2-3-83-55-161.compute-1.amazonaws.com
+NodeId=4
+[mysqld]
+NodeId=50
+
+cd mysqlc
+scripts/mysql_install_db --no-defaults --datadir=$HOME/my_cluster/mysqld_data
+cd my_cluster
+ $HOME/mysqlc/bin/ndbd -c ec2-18-205-27-78.compute-1.amazonaws.com:1186
+
+In master node:
+mysql -u root -p
+GRANT ALL ON *.* TO 'slave1'@'ip-172-31-80-31.ec2.internal(private ip DNS slave1)' IDENTIFIED BY '1234Fa$$'; (we do this for all slave nodes)
+FLUSH PRIVILEGES;
+
+In slave nodes:
+mysql -h ec2-18-205-27-78.compute-1.amazonaws.com -u slave1 -p
+mysql> use sakila; ( we should have access to the mysql of master and see the sakila database)
+
+cd /usr/share/sysbench/
+sysbench --db-driver=mysql --mysql-user='slave1' --mysql-password='1234Fa$$' --mysql-host='ip-172-31-82-168.ec2.internal(private DNS master node)' --mysql-db=sakila /usr/share/sysbench/oltp_read_only.lua prepare
+sysbench --db-driver=mysql --mysql-user='slave1' --mysql-password='1234Fa$$' --mysql-host='ip-172-31-82-168.ec2.internal' --mysql-db=sakila /usr/share/sysbench/oltp_read_only.lua run
+
+
